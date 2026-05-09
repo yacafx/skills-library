@@ -2,6 +2,14 @@
 
 Thanks for contributing to this skills library.
 
+## Quickstart (TL;DR)
+
+1. Fork and branch: `git checkout -b feat/my-skill-change`
+2. Edit one skill under `skills/<skill-name>/`
+3. Run: `python3 scripts/validate_skills.py`
+4. Open a PR and complete the template
+5. Address review feedback until `validate` passes
+
 ## Goals
 
 - Keep skills portable across clients.

@@ -44,6 +44,15 @@ Keep invocation explicit when needed (for example, `decompose: ...`) and describ
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution standards and PR checklist.
 
+### Contributor Quickstart
+
+1. Fork this repository.
+2. Create a branch: `git checkout -b feat/my-skill-change`.
+3. Make your changes under `skills/<skill-name>/`.
+4. Run validation: `python3 scripts/validate_skills.py`.
+5. Push your branch and open a pull request.
+6. Address review feedback and ensure the `validate` check passes.
+
 ## Governance
 
 - [LICENSE](LICENSE)
