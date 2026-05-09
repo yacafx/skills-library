@@ -34,20 +34,6 @@ References:
 
 Keep invocation explicit when needed (for example, `decompose: ...`) and describe trigger behavior clearly in each skill's `SKILL.md`.
 
-## Hybrid use: problem-decomposition + Agent Skills
-
-Use this flow when you want clarity first, then execution discipline:
-
-`decompose -> spec -> plan -> build/test -> review -> ship`
-
-Rules:
-- Run decomposition only when explicitly invoked (`decompose: ...`).
-- Hand off these fields to spec:
-  - `problem_statement`, `success_metrics`, `constraints`
-  - `in_scope`, `out_of_scope`, `risks`
-  - `open_questions`, `recommended_direction`
-- Do not load all skills at once; activate by phase.
-
 ## Repository roadmap
 
 - Add one skill per folder under `skills/`.
