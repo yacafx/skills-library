@@ -40,3 +40,12 @@ Rules:
   - `in_scope`, `out_of_scope`, `risks`
   - `open_questions`, `recommended_direction`
 - Do not load all skills at once; activate by phase.
+
+Integration steps:
+1. Clone Addy Osmani's Agent Skills repository:
+   - `git clone https://github.com/addyosmani/agent-skills.git`
+2. Configure your agent tool to load skills from the cloned `skills/` directory.
+3. Run this skill first (`decompose: ...`) to clarify the problem.
+4. Hand off to downstream skills in order:
+   - `spec -> plan -> build/test -> review -> ship`
+5. Keep handoff key names in English, even when the process language is not English.
