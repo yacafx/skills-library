@@ -15,6 +15,12 @@ description: >
 Run only when explicitly called with `decompose: <problem>` or `$problem-decomposition`.
 If the user says something vague like "I'm stuck" without explicit invocation, do not start this workflow.
 
+## Language behavior
+
+- Default to English.
+- If the user requests another language, run all steps in that language.
+- Keep the selected language across the full workflow unless the user asks to switch.
+
 ## Modes
 
 - **Coaching** (default): step-by-step interaction.
@@ -123,6 +129,8 @@ Choose default based on context:
 
 In Quick mode, present inferred constraints/success criteria/unknowns first and ask for confirmation before producing the final artifact.
 Present the output in chat.
+Generate final artifacts (prompt/spec/investigation brief) in the selected language.
+If the user asks to switch language mid-flow, switch from that point and confirm once.
 
 ## Save to file
 
@@ -141,6 +149,7 @@ If user provides a path → write the file. If user declines → continue.
 ## Optional downstream handoff
 
 After Step 11, this skill can hand off to `spec-driven-development`.
+Keep handoff key names in English for interoperability; values may be in the selected language.
 
 Required handoff fields:
 - `problem_statement`

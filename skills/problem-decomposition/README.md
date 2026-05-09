@@ -21,6 +21,12 @@ One of:
 - investigation brief
 - prompt + spec
 
+## Language policy
+- Default language is English.
+- If user selects another language, run the full process in that language.
+- Final generated documents are in the selected language.
+- Handoff keys stay in English for compatibility; values can be in the selected language.
+
 ## Hybrid use: problem-decomposition + Agent Skills
 
 Use this flow when you want clarity first, then execution discipline:
