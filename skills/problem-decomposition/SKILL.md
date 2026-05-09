@@ -138,6 +138,23 @@ If the user provided a project path, suggest:
 
 If user provides a path → write the file. If user declines → continue.
 
+## Optional downstream handoff
+
+After Step 11, this skill can hand off to `spec-driven-development`.
+
+Required handoff fields:
+- `problem_statement`
+- `success_metrics`
+- `constraints`
+- `in_scope`
+- `out_of_scope`
+- `risks`
+- `open_questions`
+- `recommended_direction`
+
+Recommended next flow:
+`spec -> plan -> build/test -> review -> ship`
+
 ## Step 12: Challenge (optional)
 
 Invite a stress test for blind spots and assumptions.
