@@ -39,3 +39,7 @@ Keep invocation explicit when needed (for example, `decompose: ...`) and describ
 - Add one skill per folder under `skills/`.
 - Keep `SKILL.md` portable and standards-first.
 - Put product-specific installation notes in this README, not inside each skill implementation unless necessary.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution standards and PR checklist.
