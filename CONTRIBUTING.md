@@ -39,8 +39,9 @@ skills/
 
 1. Create or update files in one skill folder.
 2. Validate links and referenced file paths.
-3. Test prompt examples manually in at least one client.
-4. Open a PR with:
+3. Run local validation: `python3 scripts/validate_skills.py`.
+4. Test prompt examples manually in at least one client.
+5. Open a PR with:
    - what changed
    - why it changed
    - how you tested it
@@ -58,4 +59,7 @@ skills/
 - [ ] Skill remains portable and standards-first
 - [ ] `SKILL.md` purpose and trigger behavior are clear
 - [ ] `references/` content matches `SKILL.md` flow
+- [ ] Frontmatter includes required fields (`name`, `description`)
+- [ ] Skill folder name matches `name` in `SKILL.md`
+- [ ] Local validator passes
 - [ ] README/docs updated when installation guidance changes

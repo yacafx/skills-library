@@ -1,0 +1,10 @@
+# Default owner for all repository content
+* @yacafx
+
+# Skills and governance paths
+/skills/ @yacafx
+/.github/ @yacafx
+/README.md @yacafx
+/CONTRIBUTING.md @yacafx
+/SECURITY.md @yacafx
+/LICENSE @yacafx

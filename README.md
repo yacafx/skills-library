@@ -43,3 +43,8 @@ Keep invocation explicit when needed (for example, `decompose: ...`) and describ
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution standards and PR checklist.
+
+## Governance
+
+- [LICENSE](LICENSE)
+- [SECURITY.md](SECURITY.md)
