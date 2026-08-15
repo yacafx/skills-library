@@ -7,6 +7,7 @@ Detecta por página:
   NUMEROS    cifras del ES distintas a las del EN
   GLOSARIO   término EN presente en el bloque cuyo ES obligatorio no aparece
   TOKEN      restos de tokens (‹, ›) o marcado roto en el ES
+  VALIDACION falta o está incompleta la validación total EN↔ES (qa/validacion-total.tsv)
 Salida: qa/defectos.tsv (página, tipo, id, detalle)
 """
 import json, re, sys
@@ -14,6 +15,7 @@ from pathlib import Path
 
 P = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(P / "scripts"))
+import _validacion
 
 BLOQ = P / "traduccion" / "digital"
 ES = P / "traduccion" / "es"
@@ -70,6 +72,12 @@ for f in sorted(BLOQ.glob("pag-*.json")):
                 if palabras and any(w not in texto.lower() for w in palabras) \
                         and ten.lower() not in texto.lower():
                     defectos.append((pg, "GLOSARIO", bid, f"{ten} → falta «{nucleo}»"))
+
+# la validación total EN↔ES es un defecto de primera clase si falta o no cubre todo
+n_pags = max((int(f.stem.split("-")[1]) for f in BLOQ.glob("pag-*.json")), default=0)
+ok_val, motivo_val = _validacion.estado(P, n_pags)
+if not ok_val:
+    defectos.append((0, "VALIDACION", "-", motivo_val))
 
 out = P / "qa" / "defectos.tsv"
 out.write_text("\n".join(f"{p}\t{t}\t{b}\t{d}" for p, t, b, d in defectos))

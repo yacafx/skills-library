@@ -45,7 +45,8 @@ vive SOLO en su página de gbrain.
 3) Copia `scripts/` del skill a `<proyecto>/scripts/` y crea el venv (§Instalación).
 4) F0–F2: catálogo, OCR, glosario. F3: **piloto de 10 páginas** — no sigas sin piloto limpio.
 5) F4: producción por tandas de capítulo en segundo plano; repara lo que marque el QA.
-6) F5 arte/mapas, F6 ensamble, F7 QA final. F8 export a Foundry solo si aplica.
+6) F5 arte/mapas, F6 ensamble, F7 QA final, **F7.5 validación total EN↔ES (obligatoria,
+   §Ruta A — aplica igual en rutas B/C antes de entregar)**. F8 Foundry solo si aplica.
 
 ## F-1 — Triaje: ¿qué clase de PDF es? (obligatorio)
 
@@ -189,8 +190,10 @@ handouts; se empaqueta con `bunx @foundryvtt/foundryvtt-cli`.
   en idioma destino desde `secciones`, y guarda con `deflate_images` + `garbage=4`
   (**apply_redactions descomprime las imágenes**: sin esto un libro de 23 MB sale en
   216 MB; con esto, en 16). Portada e índice van por composición especial si
-  proyecto.json declara `"portada"` / `"pagina_indice"`.
-- `96_qa.py` — barrido: SIN-TRAD, inglés residual, números alterados, glosario, tokens.
+  proyecto.json declara `"portada"` / `"pagina_indice"`. **Compuerta**: sin la
+  validación total de F7.5 el libro completo sale como `-BORRADOR.pdf`.
+- `96_qa.py` — barrido: SIN-TRAD, inglés residual, números alterados, glosario, tokens,
+  y `VALIDACION` (falta o cobertura incompleta de la validación total F7.5).
 - `97_indice.py` — índice con puntos líder: reemplaza SOLO el segmento del título de
   cada entrada (los puntos y números de página quedan intactos); títulos de sección
   fijos en `"indice_fijos"`; ojo con números pegados al título («Background114»), se
@@ -209,15 +212,24 @@ inyectarlo filtrado por página (`glosario_pagina`). Si el dominio tiene termino
 oficial localizada (juegos, normas técnicas), verificarla contra la fuente oficial antes
 de producción — las fuentes concretas ya validadas están en las notas privadas de gbrain.
 
-**Validación final con Claude (no del modelo local)**: tras el QA automático, revisar
-TODO el texto EN↔ES por tramos (agentes paralelos que reportan reemplazos exactos
+### F7.5 — Validación total EN↔ES (GO/NO-GO, OBLIGATORIA)
+
+Tras el QA automático, el orquestador (no el modelo local) revisa **TODO** el texto
+EN↔ES por tramos: agentes paralelos que reportan reemplazos exactos
 `página\tbloque\ttipo\tfragmento_actual\tfragmento_corregido`; el orquestador adjudica
 CADA hallazgo contra el EN antes de aplicar — los revisores también se equivocan e
-inventan términos). En un libro denso salen ~6 correcciones/página que los detectores
+inventan términos. En un libro denso salen ~6 correcciones/página que los detectores
 no ven: género en viñetas, falsos amigos (*vicious*→vicioso, *check*→tirada vs prueba),
 rotaciones de contenido entre claves (cazarlas también con ES < 45 % del largo del EN),
 celdas de tabla mal etiquetadas. Aplicación idempotente: si el fragmento nuevo ya está,
 cuenta como aplicado (sobrevive a relanzamientos).
+
+**Esta fase NO es opcional y deja evidencia**: registra `qa/validacion-total.tsv` con
+`# cobertura: INI-FIN` (rangos revisados; un tramo sin hallazgos también cuenta) y una
+fila por corrección aplicada (contrato en `_validacion.py`). La compuerta es mecánica:
+`95_libro.py` produce `-BORRADOR.pdf` si la cobertura no abarca todas las páginas, y
+`96_qa.py` lo reporta como defecto `VALIDACION`. Saltártela exige decisión EXPLÍCITA
+del usuario (`--sin-validar`) — nunca la tomes tú solo.
 
 ## Convenciones de `traduccion/es/pag-NNN.json`
 

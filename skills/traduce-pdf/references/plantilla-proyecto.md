@@ -70,6 +70,6 @@ está terminado. `50_assemble.py` sin `--todas` solo mete las páginas con `comp
 - [ ] Detector de huérfanos: 0 reales. Detector de solapes: 0 sustanciales.
 - [ ] Índice y numeración de páginas coherentes con el original.
 - [ ] Overrides documentados con su motivo (no vacíos).
-- [ ] Validación de contenido con Claude aplicada (ver SKILL.md §Ruta A, «Validación
-      final») — el QA automático no ve errores de sentido.
+- [ ] Validación total EN↔ES aplicada y registrada en `qa/validacion-total.tsv`
+      con cobertura completa (SKILL.md §F7.5) — sin ella `95_libro.py` entrega BORRADOR.
 - [ ] Aprendizajes retro-portados: SKILL.md/scripts + página `pdf-traduccion-*` en gbrain.
