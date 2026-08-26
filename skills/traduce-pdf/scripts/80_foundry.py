@@ -16,13 +16,24 @@ import _proyecto
 SLUG = _proyecto.slug()
 TITULO = _proyecto.titulo_es()
 OUT = P / "foundry" / SLUG
-CAP = [  # (pág inicio, pág fin, nombre)
-    (6, 17, "Introducción"), (18, 37, "Capítulo 1"), (38, 57, "Capítulo 2"),
-    (58, 73, "Capítulo 3"), (74, 93, "Capítulo 4"), (94, 111, "Capítulo 5"),
-    (112, 131, "Capítulo 6"), (132, 149, "Capítulo 7"), (150, 169, "Capítulo 8"),
-    (170, 175, "Capítulo 9"), (176, 191, "Capítulo 10"), (192, 204, "Capítulo 11"),
-    (205, 240, "Apéndice A: Bestiario"), (241, 256, "Apéndice B"), (257, 257, "Rastreador de Secretos"),
-]
+def _capitulos():
+    """Rangos (ini, fin, nombre) para los diarios.
+    - "foundry_secciones": [[ini, fin, nombre], …] manda si existe (permite excluir
+      portada/índice/mazos imprimibles).
+    - Si no, se derivan de "secciones" [[pag, nombre], …]: cada una termina donde
+      empieza la siguiente; la última en "foundry_ultima_pag" o la última página."""
+    fs = _proyecto.get("foundry_secciones")
+    if fs:
+        return [tuple(x) for x in fs]
+    secs = _proyecto.get("secciones", [])
+    ult = _proyecto.get("foundry_ultima_pag")
+    out = []
+    for i, (ini, nombre) in enumerate(secs):
+        fin = secs[i+1][0] - 1 if i+1 < len(secs) else (ult or ini)
+        out.append((ini, fin, nombre))
+    return out
+
+CAP = _capitulos()
 
 
 def uid():
@@ -55,36 +66,74 @@ def sb2h(sb):
     return "".join(partes)
 
 
+def _cfg_h():
+    c = _proyecto.get("foundry", {})
+    return c.get("h1", 18.0), c.get("h2", 12.5), c.get("footer_max", 7.0), c.get("h1_acento", 11.6)
+
+
 def pagina_html(pg):
+    """Piezas (nivel|None, html) de una página, desde los artefactos de la ruta
+    que exista: C (en-bloques con tipos explícitos) o A (digital con geometría)."""
     fes = P / "traduccion" / "es" / f"pag-{pg:03d}.json"
-    fen = P / "traduccion" / "en-bloques" / f"pag-{pg:03d}.json"
-    if not fes.exists() or not fen.exists():
+    fen_c = P / "traduccion" / "en-bloques" / f"pag-{pg:03d}.json"
+    fen_a = P / "traduccion" / "digital" / f"pag-{pg:03d}.json"
+    if not fes.exists():
         return []
     es = json.load(open(fes))
-    eb = json.load(open(fen))
-    tipos = {b["id"]: b["type"] for b in eb["blocks"]}
-    piezas = []  # (nivel_encabezado|None, html)
-    for b in eb["blocks"]:
-        bid = b["id"]
-        v = es.get(bid)
-        if v is None or v == "~":
-            continue
-        t = v.get("t") if isinstance(v, dict) else v
-        if not isinstance(t, str) or not t.strip():
-            continue
-        tipo = (v.get("type") if isinstance(v, dict) else None) or tipos.get(bid, "cuerpo")
+    piezas = []
+
+    def emite(t, tipo):
         if tipo in ("footer", "kicker"):
-            continue
+            return
         if tipo in ("titulo", "h_mayor", "h1"):
             piezas.append(("h1", H.escape(re.sub(r"[‹›/scpb]+?›|⏎", " ", t)).strip()))
         elif tipo == "h2":
-            piezas.append(("h2", H.escape(t.strip())))
+            piezas.append(("h2", H.escape(re.sub(r"\*+", "", t).strip())))
         elif tipo == "readaloud":
             piezas.append((None, f"<blockquote>{m2h(t)}</blockquote>"))
         elif tipo == "caption":
             piezas.append((None, f"<p><em>{m2h(t)}</em></p>"))
         else:
             piezas.append((None, m2h(t)))
+
+    if fen_c.exists():                      # ruta C: tipos explícitos del OCR
+        eb = json.load(open(fen_c))
+        tipos = {b["id"]: b["type"] for b in eb["blocks"]}
+        for b in eb["blocks"]:
+            v = es.get(b["id"])
+            if v is None or v == "~":
+                continue
+            t = v.get("t") if isinstance(v, dict) else v
+            if not isinstance(t, str) or not t.strip():
+                continue
+            emite(t, (v.get("type") if isinstance(v, dict) else None) or tipos.get(b["id"], "cuerpo"))
+    elif fen_a.exists():                    # ruta A: jerarquía por tamaño de fuente
+        h1_min, h2_min, foot_max, h1_acento = _cfg_h()
+        for b in json.load(open(fen_a))["bloques"]:
+            v = es.get(b["id"])
+            if v is None or v == "~":
+                continue
+            t = v.get("t") if isinstance(v, dict) else v
+            if not isinstance(t, str) or not t.strip():
+                continue
+            size = b.get("size", 9)
+            plano = re.sub(r"\*+|\s+", " ", t).strip()
+            col = b.get("color", 0)
+            r, g, bl = (col >> 16) & 255, (col >> 8) & 255, col & 255
+            # color de acento = ni gris/negro ni blanco (los libros marcan secciones así)
+            acento = (max(r, g, bl) - min(r, g, bl)) > 40 and max(r, g, bl) > 90
+            versal = plano.isupper() and b.get("lineas", 1) <= 2
+            if size <= foot_max:
+                tipo = "footer"
+            elif size >= h1_min and b.get("lineas", 1) <= 3:
+                tipo = "h1"
+            elif versal and acento and size >= h1_acento:
+                tipo = "h1"
+            elif versal and size >= h2_min - 2 and len(plano) <= 70:
+                tipo = "h2"
+            else:
+                tipo = "cuerpo"
+            emite(t, tipo)
     for sb in es.get("__statblocks__", []):
         piezas.append((None, sb2h(sb)))
     return piezas
@@ -135,9 +184,11 @@ def construye():
         "id": SLUG, "title": f"{TITULO} — Companion (uso personal)",
         "description": "Diarios en español generados del pipeline de traducción personal.",
         "version": "0.1.0", "compatibility": {"minimum": "12", "verified": "14"},
-        "authors": [{"name": "yacaFx"}],
-        "packs": [{"name": "diarios", "label": f"{TITULO} — Diarios", "path": "packs/diarios",
-                   "type": "JournalEntry", "system": "dnd5e"}],
+        "authors": [{"name": _proyecto.get("autor", "traduccion-personal")}],
+        "packs": [{k: v for k, v in {
+            "name": "diarios", "label": f"{TITULO} — Diarios", "path": "packs/diarios",
+            "type": "JournalEntry", "system": _proyecto.get("foundry_system")}.items()
+            if v is not None}],
     }
     (OUT / "module.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=1))
     print(f"module.json listo en {OUT}")
