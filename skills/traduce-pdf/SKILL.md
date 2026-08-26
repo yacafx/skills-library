@@ -148,8 +148,14 @@ Es re-corrible: hazlo tras cada tanda para tener siempre un híbrido usable.
 representativas y verificación visual.
 
 **F8 — Foundry VTT** (opcional, solo material de rol). `80_foundry.py` genera diarios por
-capítulo + glosario; `81_foundry_fase2.py` añade actores dnd5e, RollTables, escenas y
-handouts; se empaqueta con `bunx @foundryvtt/foundryvtt-cli`.
+capítulo + glosario (lee ruta A o C; secciones desde proyecto.json); `81_foundry_fase2.py`
+añade actores dnd5e, RollTables, escenas y handouts; se empaqueta con
+`bunx @foundryvtt/foundryvtt-cli`. TRES TRAMPAS del CLI: (1) exige `_key`
+(`!coleccion!id`) en CADA documento Y en los embebidos (`!journal.pages!entry.page`,
+`!actors.items!…`) — sin él omite documentos o truena, y el pack queda VACÍO en
+silencio; (2) `--out` es la carpeta PADRE (el CLI añade el nombre del pack; pasarle la
+ruta completa anida `pack/pack`); (3) verificar SIEMPRE con `package unpack` contando
+documentos — bajo bun el unpack puede fallar con «Iterator is not open», usar `npx`.
 
 ## Ruta A — pipeline completo (scripts 90–97)
 

@@ -5,7 +5,7 @@ artefactos del pipeline (traduccion/es/*.json + en-bloques). El texto ya vive
 en disco; esto solo lo re-empaqueta a HTML/JSON de Foundry.
 
 Salida: foundry/<slug>/ (module.json + packs/src/…). Compilar packs:
-  cd foundry/<slug> && bunx @foundryvtt/foundryvtt-cli package pack diarios --in packs/src/diarios --out packs/diarios
+  cd foundry/<slug> && bunx @foundryvtt/foundryvtt-cli package pack diarios --in packs/src/diarios --out packs\n(SIN _key por documento el CLI los omite EN SILENCIO — verificar el pack con unpack, no con su existencia)
 """
 import html as H
 import json, re, secrets
@@ -166,16 +166,23 @@ def construye():
             paginas_fd.append({"_id": uid(), "name": actual_nombre[:120], "type": "text",
                                "title": {"show": False, "level": 1}, "sort": orden,
                                "text": {"format": 1, "content": "".join(actual_html)}})
-        doc = {"_id": uid(), "name": f"{TITULO} — {nombre}", "pages": paginas_fd,
-               "folder": None, "sort": 0, "flags": {}, "ownership": {"default": 0}}
+        did = uid()
+        # el CLI de Foundry exige _key TAMBIÉN en las páginas embebidas, o
+        # falla con «Key cannot be null» y el pack queda vacío
+        for pg_fd in paginas_fd:
+            pg_fd["_key"] = f"!journal.pages!{did}.{pg_fd['_id']}"
+        doc = {"_id": did, "_key": f"!journal!{did}", "name": f"{TITULO} — {nombre}",
+               "pages": paginas_fd, "folder": None, "sort": 0, "flags": {}, "ownership": {"default": 0}}
         (src / f"{nombre.lower().replace(' ', '-').replace(':', '')}.json").write_text(
             json.dumps(doc, ensure_ascii=False, indent=1))
         print(f"{nombre}: {len(paginas_fd)} páginas de diario")
     # glosario
     filas = [l.split("\t")[:2] for l in (P / "traduccion" / "glosario.tsv").read_text().splitlines()[1:] if "\t" in l]
     tabla = "".join(f"<tr><td>{H.escape(a)}</td><td>{H.escape(b)}</td></tr>" for a, b in sorted(filas))
-    doc = {"_id": uid(), "name": f"{TITULO} — Glosario",
-           "pages": [{"_id": uid(), "name": "Glosario", "type": "text", "sort": 10,
+    gid = uid()
+    pgid = uid()
+    doc = {"_id": gid, "_key": f"!journal!{gid}", "name": f"{TITULO} — Glosario",
+           "pages": [{"_id": pgid, "_key": f"!journal.pages!{gid}.{pgid}", "name": "Glosario", "type": "text", "sort": 10,
                       "title": {"show": True, "level": 1},
                       "text": {"format": 1, "content": f"<table><tr><th>EN</th><th>ES</th></tr>{tabla}</table>"}}],
            "folder": None, "sort": 0, "flags": {}, "ownership": {"default": 0}}
