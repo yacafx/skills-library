@@ -97,6 +97,13 @@ if completo:
         print(f"   Motivo: {motivo}")
         print("   Haz la validación (SKILL.md §F7.5), registra qa/validacion-total.tsv")
         print("   y relanza. Escape consciente: --sin-validar.")
-doc.save(str(salida), deflate=True, deflate_images=True, deflate_fonts=True, garbage=4)
+# Guardar SIEMPRE primero en disco local y mover después: si el proyecto vive en una
+# carpeta sincronizada (iCloud Drive, Dropbox), escribir decenas de MB de golpe falla
+# con «cannot fwrite: Operation timed out» y deja el PDF ANTERIOR en su sitio — o sea,
+# el fallo se ve como éxito salvo que compares el contenido.
+import shutil, tempfile
+tmp = Path(tempfile.gettempdir()) / f".{salida.name}.tmp"
+doc.save(str(tmp), deflate=True, deflate_images=True, deflate_fonts=True, garbage=4)
+shutil.move(str(tmp), str(salida))
 tam = salida.stat().st_size / 1e6
 print(f"✓ {salida} ({tam:.1f} MB)")

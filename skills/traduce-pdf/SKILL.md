@@ -186,6 +186,23 @@ handouts; se empaqueta con `bunx @foundryvtt/foundryvtt-cli`.
 - Valores del `es/pag-NNN.json` de la ruta A: además de `"texto"`, `"~"` y `null`
   (§Convenciones), dict `{t, caja, size, lineas, centrado, alin}` para fusiones a mano;
   al dar `caja` más chica que el bbox original, el original se redacta completo igual.
+- **Saltos de línea en ruta A: `\n\n`** (el token ⏎ es de la ruta C y se imprime
+  literal). Listas con `{t: "uno\n\ndos", lineas: N}` conservan un elemento por renglón.
+- **Rasgo duplicado por segmentación** (ids tipo `b11b`): el modelo mete el rasgo
+  COMPLETO en el primer segmento y las continuaciones se traducen aparte → texto doble
+  en página. Se detecta como LARGO (ratio >200 %) con un vecino que repite contenido.
+  Receta: bloque largo = `{t, caja: unión de los bboxes}`, continuaciones = `"~"`.
+- **`desduplica()` colapsa palabras repetidas ENTRE nombres adyacentes** en bloques-lista
+  («… Zombie / Zombie Pack» pierde una entrada). Al reconstruir listas contra el
+  glosario, los tokens sin match suelen ser víctimas de ese colapso: reinsertar.
+- **Normalizar guiones U+2011 → `-` antes del match de `glosario_pagina`**: un guion no
+  separable en el original esquiva la fila del glosario y el modelo improvisa.
+- **Página de contenido a 2-3 columnas**: `97_indice` puede unir segmentos de columnas
+  vecinas. Alternativa que funciona: construir `es/pag-NNN.json` a mano con UN RENGLÓN
+  POR ENTRADA (`{t: "*Título . . . N*\n\n…", lineas: N}`, título traducido, puntos y
+  folio intactos) y componer por la vía normal. Para retocar UNA página del libro ya
+  ensamblado: recomponerla sola e insertarla con `delete_page` + `insert_pdf`
+  (guardando a temp + move) — mucho más barato que re-ensamblar todo.
 - `95_libro.py [INI FIN]` — ensambla el libro entero sobre el PDF original, marcadores
   en idioma destino desde `secciones`, y guarda con `deflate_images` + `garbage=4`
   (**apply_redactions descomprime las imágenes**: sin esto un libro de 23 MB sale en
@@ -197,13 +214,45 @@ handouts; se empaqueta con `bunx @foundryvtt/foundryvtt-cli`.
 - `97_indice.py` — índice con puntos líder: reemplaza SOLO el segmento del título de
   cada entrada (los puntos y números de página quedan intactos); títulos de sección
   fijos en `"indice_fijos"`; ojo con números pegados al título («Background114»), se
-  separan por caracteres.
+  separan por caracteres. La página que guarda sale de `"pagina_indice"`.
+- `98_consistencia.py` — validación determinística EN↔ES de TODO el libro; abarata la
+  validación total (F7.5) dejando a Claude solo lo que exige juicio. Detecta `NUM`
+  (números alterados), `MARCADO` (asteriscos/tokens desbalanceados), `CORTO`/`LARGO`
+  (ratio ES/EN fuera de 45–200 %: delata **rotación de contenido entre claves**),
+  `INGLES`, `PERDIDO` (nombre propio del EN ausente en el ES) y `DIVERGE` (el MISMO
+  texto EN traducido de dos formas distintas en el libro). Córrelo ANTES de gastar
+  agentes revisores.
+- `99_marcado.py` — repara el marcado desbalanceado contra el EN en dos fases: alinea
+  el cierre del run-in copiándolo del original y luego cierra al final lo que quede
+  abierto. Idempotente; lo no reparable lo lista para adjudicar a mano.
+- `97b_sentido.py` — sospechas de significado equivocado, que ningún detector de forma
+  ve: `FALSO-AMIGO` (tabla EN→calco: eventually/vicious/actually/realize…),
+  `NEGACION` (el EN niega y el ES perdió la negación), `CONDICION` (el EN nombra una
+  condición y el ES otra), `FRECUENCIA` (once per rest/scene/session cambiado) y
+  `RECURSO` (Hope↔Fear intercambiados). NO decide: marca candidatos para adjudicar
+  uno a uno contra el original.
+
+- `digital_ligero.py [dpi] [calidad]` — saca la versión de pantalla DEL maestro con
+  `Document.rewrite_images()`, que recomprime respetando máscaras y recortes. **Jamás
+  con `replace_image()` a mano**: pierde el SMask y el arte acaba pintado ENCIMA del
+  texto (ya probado y descartado). El texto sigue vectorial; solo cambian las imágenes.
+
+**Orden del cierre (F7–F7.5)**, cada paso alimenta al siguiente:
+`99_marcado.py` → `98_consistencia.py` → `97b_sentido.py` → adjudicar cada hallazgo
+contra el EN → aplicar con scripts idempotentes → recomponer SOLO las páginas tocadas
+→ registrar en `qa/validacion-total.tsv` → `95_libro.py`. Los falsos positivos se
+documentan en `qa/overrides.tsv` con su motivo; no se «corrige» lo que ya estaba bien.
 
 Claves nuevas de proyecto.json (todas opcionales):
 `"compose": {"line_art": "auto|none", "sube": false}` ·
 `"portada": {"zona": […], "caja": […], "titulo": "…", "tamano": 52, "color": "white",
 "contorno": "black"}` (efecto contorno = N copias desplazadas + relleno) ·
 `"pagina_indice": 3` · `"indice_fijos": {"Chapter 1: …": "Capítulo 1: …"}`.
+
+**Consistencia con lo YA entregado**: si existe un proyecto hermano entregado del
+mismo juego/dominio, sus `es/` son la autoridad terminológica: `grep` ahí ANTES de
+fijar o «corregir» un término. Dos veces por proyecto el instinto propone divergir de
+una decisión ya impresa — y pierde.
 
 **Glosario como palanca de consistencia**: el modelo local inventa un nombre distinto
 para el mismo término en cada página. Antes de producción, construir el glosario
@@ -223,6 +272,17 @@ no ven: género en viñetas, falsos amigos (*vicious*→vicioso, *check*→tirad
 rotaciones de contenido entre claves (cazarlas también con ES < 45 % del largo del EN),
 celdas de tabla mal etiquetadas. Aplicación idempotente: si el fragmento nuevo ya está,
 cuenta como aplicado (sobrevive a relanzamientos).
+
+Antes de gastar agentes, resolver los DIVERGE por REGLAS DE MASA con jerarquía de
+canonicidad: (1) el apéndice de referencia manda sobre los mazos imprimibles; (2) la
+página real de la sección/clase manda sobre listados, ejemplos y hojas de referencia
+(que adoptan la redacción conservando MAYÚSCULAS/negritas locales); (3) entre
+duplicados del capítulo de adversarios, el statblock real manda sobre el ejemplo
+anotado. Al aplicar hallazgos de agentes: CADA reemplazo lleva una GUARDA (regex sobre
+el EN del bloque) — los revisores contradicen el glosario a veces y la guarda lo
+detiene. Si un agente reporta con tope de hallazgos, pedirle el resto. Y en `96_qa`,
+~80 % de los falsos GLOSARIO son conjugaciones («marques» vs «marcar un Estrés»):
+filtrar por raíz (4 primeras letras) antes de revisar a mano.
 
 **Esta fase NO es opcional y deja evidencia**: registra `qa/validacion-total.tsv` con
 `# cobertura: INI-FIN` (rangos revisados; un tramo sin hallazgos también cuenta) y una
@@ -256,6 +316,15 @@ del usuario (`--sin-validar`) — nunca la tomes tú solo.
   traducción (detecta **contenido rotado entre claves**, un fallo silencioso y peligroso).
 - El modelo a veces renombra la clave o devuelve vacío: acepta clave única como fallback.
 - Traduce nombres propios si lo dejas: lista negra explícita + barrido posterior.
+- Traduce nombres de PERSONAJES en los ejemplos de juego y créditos de artista (una fila
+  de glosario genérica tipo «Bear→Oso» le pega al artista Bear): los bloques de crédito
+  («© … 20XX» + nombre) van a `null`, y los diálogos de ejemplo se barren buscando los
+  nombres del reparto.
+- Traduce «Tier» y unidades del juego aunque las reglas lo prohíban: fila EN==ES en el
+  glosario («Tier→Tier») arma el detector PERDIDO y evita recaídas silenciosas.
+- Rota rangos en statlines: correr POR TANDA un detector barato que extrae el rango
+  (Melee/Very Close/…) de la misma posición en EN y ES y los compara. Caza errores que
+  cambian el alcance de un adversario en mesa.
 
 **Composición**
 - El tamaño se topa por el interlineado del OCR: en fragmentos de una línea eso lo vuelve

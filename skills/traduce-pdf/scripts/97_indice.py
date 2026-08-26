@@ -171,7 +171,7 @@ def compone_indice(doc, pg=None):
 if __name__ == "__main__":
     doc = _d.abre()
     compone_indice(doc)
-    doc.select([2])
+    doc.select([_proyecto.get("pagina_indice", 3) - 1])
     out = P / "render" / "paginas" / "indice-es.pdf"
     doc.save(str(out), deflate=True)
     print(f"✓ {out}")
