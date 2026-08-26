@@ -1,0 +1,4 @@
+interface:
+  display_name: "RPG Library Curator"
+  short_description: "Audit and organize tabletop RPG libraries"
+  default_prompt: "Use $rpg-library-curator to audit an RPG library and propose a safe organization plan."

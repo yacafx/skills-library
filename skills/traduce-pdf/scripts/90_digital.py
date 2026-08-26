@@ -232,8 +232,10 @@ def _bloque_de(page, seg, bid):
         texto = re.sub(r"\s*\[\s*\]\s*", " [ ] ", texto)
         texto = re.sub(r"\s*\[ \]\s+(?=[A-ZÁÉÍÓÚÑ¿«])", "\n\n[ ] ", texto)
         texto = re.sub(r"\s*\[ \]\s*$", "", texto)
-    # fichas de datos: cada «**Etiqueta** valor» abre renglón (CA, PG, Velocidad…)
-    if len(re.findall(r"\*\*[^*]{3,30}\*\*\s*[\d+]", texto)) >= 2:
+    # fichas de datos: cada «**Etiqueta** valor» abre renglón (CA, PG, Velocidad…);
+    # NO aplica a líneas de estadísticas separadas con «|» (statblocks de una tira):
+    # partirlas multiplica los renglones y el bloque ya no cabe en su caja
+    if "|" not in texto and len(re.findall(r"\*\*[^*]{3,30}\*\*\s*[\d+]", texto)) >= 2:
         texto = re.sub(r"\s+(?=\*\*[^*]{3,30}\*\*\s*[\d+])", "\n\n", texto)
     texto = desduplica(texto)
     if letra and texto:
@@ -366,6 +368,62 @@ def _frases_tabla(page, regiones):
     return frases
 
 
+# Dígitos estilizados de fuentes de display (Eveleth) que get_text reporta como
+# glifos de uso privado; sin el mapa se componen como tofu (⬜).
+PUA_DIGITOS = {"\ue53f": "10", "\ue540": "9", "\ue541": "1", "\ue542": "2",
+               "\ue543": "3", "\ue544": "4", "\ue545": "5", "\ue546": "6",
+               "\ue547": "7", "\ue548": "8"}
+
+# Ligaduras rotas por la extracción («Diffi culty», «fl ying»): el espacio tras un
+# token terminado en fi/fl/ffi/ffl seguido de minúscula es espurio. No se incluye
+# «ff» (off/staff/cliff son palabras reales) ni tokens con guion previo (sci-fi).
+_LIGADURA = re.compile(r"\b(?<!-)(\w*?(?:ffi|ffl|fi|fl))[ ](?=[a-z])")
+
+
+def _normaliza_extraccion(t):
+    for pua, d in PUA_DIGITOS.items():
+        t = t.replace(pua, d)
+    return _LIGADURA.sub(r"\1", t)
+
+
+def _es_continuacion(p, b):
+    """b continúa el párrafo de p: misma columna/estilo, contiguo verticalmente,
+    p termina a media frase y b arranca en minúscula. Cura los párrafos que get_text
+    parte en varios bloques (rasgos de statblock, texto que envuelve arte)."""
+    if p.get("lista") or b.get("lista") or p.get("dropcap") or b.get("dropcap"):
+        return False
+    # comparar FAMILIA, no la fuente exacta: el arranque «***Rasgo - Acción:***» domina
+    # el primer bloque con la variante BoldItalic y la continuación va en Light
+    fam = lambda f: re.split(r"[-,]", f)[0]
+    if fam(p["fuente"]) != fam(b["fuente"]) or abs(p["size"] - b["size"]) > 0.3:
+        return False
+    if abs(p["bbox"][0] - b["bbox"][0]) > 3:
+        return False
+    if not (-2 <= b["bbox"][1] - p["bbox"][3] <= p["size"] * 1.1):
+        return False
+    fin = re.sub(r"[*›»\s]+$", "", p["texto"])
+    if not fin or fin[-1] in ".!?:;—":
+        return False
+    ini = re.sub(r"^[*‹«\s]+", "", b["texto"])
+    return bool(ini) and (ini[0].islower() or ini[0].isdigit())
+
+
+def _fusiona_continuaciones(bloques):
+    out = []
+    for b in bloques:
+        if out and _es_continuacion(out[-1], b):
+            p = out[-1]
+            r = fitz.Rect(p["bbox"]) | fitz.Rect(b["bbox"])
+            p["bbox"] = [round(v, 1) for v in r]
+            sep = "" if p["texto"].rstrip().endswith("-") else " "
+            p["texto"] = p["texto"].rstrip() + sep + b["texto"].lstrip()
+            p["lineas"] += b["lineas"]
+            p["size_max"] = max(p["size_max"], b["size_max"])
+        else:
+            out.append(b)
+    return out
+
+
 def extrae(pg, doc=None):
     """Bloques con geometría, estilo y marcado (**negrita**, *cursiva*, párrafos)."""
     propio = doc is None
@@ -385,7 +443,12 @@ def extrae(pg, doc=None):
             bl = _bloque_de(page, seg, bid)
             if bl:
                 bloques.append(bl)
+    bloques = _fusiona_continuaciones(bloques)
+    for bl in bloques:
+        bl["texto"] = _normaliza_extraccion(bl["texto"])
     frases = _frases_tabla(page, regiones)
+    for f in frases:
+        f["texto"] = _normaliza_extraccion(f["texto"])
     if propio:
         doc.close()
     return {"pagina": pg, "bloques": bloques,
@@ -463,8 +526,9 @@ def a_html(t, definiciones=False):
     # línea de ataques: cada arma en su renglón
     if len(re.findall(r"a impactar", t)) >= 2:
         t = re.sub(r"(?<=[.,])\s+(?=\*\*[A-ZÁÉÍÓÚÑ])", "\n\n", t)
-    # listas de definiciones: cada «**Término.**» abre entrada nueva (sangría francesa)
-    t = re.sub(r"(?<=[.:!?»])\s+(?=\*\*[^*]{2,40}?[.:]\*\*)", "\n\n", t)
+    # listas de definiciones: cada «**Término.**» abre entrada nueva (sangría francesa);
+    # \*{2,3} cubre también los rasgos «***Nombre - Acción:***» de los statblocks
+    t = re.sub(r"(?<=[.:!?»])\s+(?=\*{2,3}[^*]{2,40}?[.:]\*{2,3})", "\n\n", t)
     t = H.escape(t)
     t = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", t, flags=re.S)
     t = re.sub(r"(?<!\*)\*([^*]+?)\*(?!\*)", r"<i>\1</i>", t, flags=re.S)
@@ -488,7 +552,7 @@ def a_html(t, definiciones=False):
 
 def es_lista_definiciones(t):
     """≥3 entradas que empiezan con término en negrita seguido de punto."""
-    return len(re.findall(r"\*\*[^*]{2,40}?[.:]\*\*", t)) >= 3
+    return len(re.findall(r"\*{2,3}[^*]{2,40}?[.:]\*{2,3}", t)) >= 3
 
 
 def lineas_render(html, css, ancho):
@@ -592,6 +656,13 @@ def traduce(pg):
                 if v and _t.numeros_de(v) == _t.numeros_de(lote[k]) and not igual_al_origen(lote[k], v):
                     salida[k] = desduplica(v)
                     break
+    # Encabezado en MAYÚSCULAS → traducción en MAYÚSCULAS, impuesto aquí (el modelo
+    # ignora la regla a veces); no aplica si hay ‹tokens› que se romperían.
+    for k, v in salida.items():
+        en0 = pedido.get(k, "")
+        letras = re.sub(r"[^A-Za-zÁÉÍÓÚÑÜáéíóúñü]", "", en0)
+        if len(letras) >= 3 and letras.isupper() and "‹" not in v and not v.isupper():
+            salida[k] = v.upper()
     (BLOQ / f"pag-{pg:03d}.json").write_text(json.dumps(datos, ensure_ascii=False, indent=1))
     (ES / f"pag-{pg:03d}.json").write_text(json.dumps(salida, ensure_ascii=False, indent=1))
     conservados = len(pedido) - len(claves)
@@ -634,6 +705,11 @@ def compone(pg, doc):
         tr = fitz.Rect(dr["rect"])
         if 3 < tr.height < 60 and tr.width < page.rect.width * 0.9:
             trazos.append(tr)
+    # Bloques SIN traducción (clave ausente o null) deben quedar intactos: MuPDF borra
+    # todo glifo que INTERSECA el rect de redacción, así que un solape de <1 pt con el
+    # bloque de abajo basta para tragarse un encabezado entero.
+    protegidos = [fitz.Rect(b2["bbox"]) for b2 in datos["bloques"]
+                  if es.get(b2["id"]) is None]
     pendientes, avisos = [], []
     for b in datos["bloques"]:
         v = es.get(b["id"])
@@ -671,6 +747,17 @@ def compone(pg, doc):
         for tr in trazos:
             if tr.intersects(zona) and (tr & zona).get_area() > tr.get_area() * 0.5:
                 ext |= (tr + (-1, -1, 1, 1))
+        # recortar contra los bloques protegidos: si el rect solo los roza por un
+        # borde, se encoge; si el solape es sustancial no hay recorte posible
+        for pr in protegidos:
+            if not ext.intersects(pr) or ext.contains(pr):
+                continue
+            inter = ext & pr
+            if inter.height <= min(ext.height, pr.height) * 0.6:
+                if pr.y1 <= (ext.y0 + ext.y1) / 2:
+                    ext.y0 = max(ext.y0, pr.y1 + 0.25)
+                elif pr.y0 >= (ext.y0 + ext.y1) / 2:
+                    ext.y1 = min(ext.y1, pr.y0 - 0.25)
         page.add_redact_annot(ext, fill=False)   # sin relleno: solo borrar glifos
         pendientes.append((b, v))
     # === celdas de tabla: frases traducidas + ordinales (1st → 1.º); los números
@@ -822,7 +909,16 @@ def compone(pg, doc):
                 escrito = True
                 break
         if not escrito:
-            avisos.append(f"{b['id']}: no cupo → {v[:45]!r}")
+            # último recurso: escribir SIEMPRE aunque el motor tenga que encoger más;
+            # dejar el bloque sin insertar pierde el texto (la redacción ya lo borró)
+            css_min = (f"* {{font-family:{fam}; font-size:{b['size']*0.45:.1f}px;"
+                       f" color:{rgb}; margin:0; line-height:1.1;"
+                       f" text-align:{b.get('alin') or 'left'};}}")
+            sobra, _esc = page.insert_htmlbox(caja, html, css=css_min, scale_low=0.3)
+            if sobra >= 0:
+                avisos.append(f"{b['id']}: forzado a escala mínima → {v[:45]!r}")
+            else:
+                avisos.append(f"{b['id']}: no cupo NI FORZADO (texto perdido) → {v[:45]!r}")
     print(f"  p{pg}: {len(pendientes)} bloques, {len(avisos)} con problema")
     for a in avisos:
         print(f"    ⚠ {a}")
