@@ -20,12 +20,19 @@ from collections import defaultdict
 from pathlib import Path
 
 P = Path(__file__).resolve().parent.parent
+_pj = json.loads((Path(__file__).resolve().parent.parent / "proyecto.json").read_text())     if (Path(__file__).resolve().parent.parent / "proyecto.json").exists() else {}
+
 EN_DIR, ES_DIR = P / "traduccion" / "digital", P / "traduccion" / "es"
 SALIDA = P / "qa" / "consistencia.tsv"
 
 # Los que el proyecto conserva en inglés a propósito no cuentan como inglés residual.
-CONSERVA = {"tier", "finesse", "downtime", "hp", "atk", "gm", "daggerheart", "press",
-            "darrington", "critical", "role", "the", "of", "and"}
+# palabras que legítimamente quedan en EN: se alimenta de nombres_propios y
+# reglas_extra del proyecto.json, más conectores genéricos
+CONSERVA = {"the", "of", "and"}
+CONSERVA |= {w.lower() for n in _pj.get("nombres_propios", []) for w in n.split()}
+CONSERVA |= {w.lower() for r in _pj.get("reglas_extra", [])
+             if "inglés" in r or "ingles" in r for w in r.replace(",", " ").split()
+             if w.isalpha() and w[0].isupper()}
 STOP_EN = {"with", "you", "your", "when", "this", "that", "they", "their", "from",
            "have", "can", "make", "makes", "roll", "damage", "attack", "target",
            "range", "within", "creature", "character", "spend", "mark", "gain",

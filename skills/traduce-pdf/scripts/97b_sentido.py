@@ -15,6 +15,8 @@ import json, re, sys, unicodedata
 from pathlib import Path
 
 P = Path(__file__).resolve().parent.parent
+_pj = json.loads((Path(__file__).resolve().parent.parent / "proyecto.json").read_text())     if (Path(__file__).resolve().parent.parent / "proyecto.json").exists() else {}
+
 EN_DIR, ES_DIR = P / "traduccion" / "digital", P / "traduccion" / "es"
 SALIDA = P / "qa" / "sentido.tsv"
 
@@ -102,7 +104,9 @@ def main():
                         fallos.append((pg, b["id"], "FRECUENCIA",
                                        f"EN «{periodo}» ausente en ES: {v[:60]}"))
 
-            for a, bb, ea, eb in (("hope", "fear", "esperanza", "miedo"),):
+            # pares de recursos del juego (EN_a, EN_b, ES_a, ES_b); configurable
+            pares = _pj.get("recursos_pares") or [["hope", "fear", "esperanza", "miedo"]]
+            for a, bb, ea, eb in pares:
                 nea, neb = len(re.findall(a, en)), len(re.findall(bb, en))
                 nsa, nsb = len(re.findall(ea, esn)), len(re.findall(eb, esn))
                 if (nea or neb) and (nea, neb) != (nsa, nsb) and abs(nea - nsa) + abs(neb - nsb) >= 2:
