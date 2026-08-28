@@ -109,7 +109,7 @@ ver §Ruta A. Para montar la carpeta del proyecto y el orden de ejecución compl
 
 ## Instalación
 
-El repositorio canónico es `yacafx/traduce-pdf` (privado). Instala la CLI una vez con
+El repositorio canónico es `yacafx/pdf-translation-toolkit` (privado). Instala la CLI una vez con
 `uv tool install --editable '.[digital]'` desde el clon local. Para escaneos usa el extra
 `scan`; es independiente porque Torch y OCR tienen un impacto de instalación mucho mayor.
 
