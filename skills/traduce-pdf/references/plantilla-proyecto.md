@@ -6,55 +6,52 @@ Elige el camino según el veredicto del triaje (`00_triaje.py`): **A** para PDF 
 ## Camino A — PDF digital (ligero: solo PyMuPDF)
 
 ```bash
-mkdir -p "<proyecto>"/{scripts,traduccion/{digital,es},render/paginas,qa}
-cp ~/.agents/skills/traduce-pdf/scripts/*.py "<proyecto>/scripts/"
-cd "<proyecto>" && python3 -m venv scripts/venv
-scripts/venv/bin/pip install pymupdf
+traduce-pdf init "/ruta/al/original.pdf" --project "<proyecto>" \
+  --title "Nombre del libro" --profile digital
+traduce-pdf doctor --project "<proyecto>"
 ```
 
 ```bash
-V=scripts/venv/bin/python
-$V scripts/90_digital.py --extrae 1 10     # bloques con geometría y estilo
-$V scripts/90_digital.py --piloto 5 8      # GO/NO-GO: renderiza y MÍRALO
-$V scripts/90_digital.py --traduce 1 153   # producción (reanuda solo)
-$V scripts/90_digital.py --compone 1 153
-$V scripts/96_qa.py                        # barrido: sin-trad, inglés, números, glosario
-$V scripts/97_indice.py                    # si hay índice con puntos líder
-$V scripts/95_libro.py                     # ensamble + marcadores + compresión
+traduce-pdf run extract --project "<proyecto>" -- 1 10
+traduce-pdf run pilot --project "<proyecto>" -- 5 8      # GO/NO-GO: renderiza y MÍRALO
+traduce-pdf run translate --project "<proyecto>" -- 1 153
+traduce-pdf run compose --project "<proyecto>" -- 1 153
+traduce-pdf run qa --project "<proyecto>"
+traduce-pdf run index --project "<proyecto>"              # si hay índice
+traduce-pdf run build --project "<proyecto>"
 ```
 
-Varios PDFs de un mismo producto = un subproyecto por PDF con venv compartido y el MISMO
-`traduccion/glosario.tsv` copiado a cada uno.
+Varios PDFs de un mismo producto = un subproyecto por PDF, todos con el motor central y el
+MISMO `traduccion/glosario.tsv` gestionado como recurso editorial compartido.
 
 ## Camino B/C — escaneo (OCR + inpainting)
 
+Instala el perfil pesado una vez desde el repositorio central con
+`uv tool install --force --editable '.[digital,scan]'`. Después:
+
 ```bash
-mkdir -p "<proyecto>"/{scripts,corpus/{img,ocr,render300},traduccion/{en-bloques,es},plantillas/{fuentes/patched,modelos},render/{paginas,salida},qa,muestras}
-cp ~/.agents/skills/traduce-pdf/scripts/*.py "<proyecto>/scripts/"
-cd "<proyecto>" && python3.13 -m venv scripts/venv
-scripts/venv/bin/pip install pyobjc-framework-Vision pyobjc-framework-Quartz weasyprint pikepdf pillow numpy torch
-curl -L -o plantillas/modelos/big-lama.pt \
-  https://github.com/Sanster/models/releases/download/add_big_lama/big-lama.pt
+traduce-pdf init "/ruta/al/original.pdf" --project "<proyecto>" \
+  --title "Nombre del libro" --profile scan
+traduce-pdf doctor --project "<proyecto>"
 ```
 
 ```bash
-V=scripts/venv/bin/python
-$V scripts/01_catalog.py                 # F0 catálogo + fondos 300 dpi
-$V scripts/10_ocr_vision.py --out corpus/ocr   # F1 OCR
-$V scripts/11_corpus.py && $V scripts/12_reclassify.py
-$V scripts/23_bloques.py                 # bloques por página
-$V scripts/20_entidades.py               # F2 candidatos a glosario → curar a mano
-$V scripts/35_traduce_ollama.py 6 15     # F3 piloto (GO/NO-GO)
-$V scripts/35_traduce_ollama.py 18 37    # F4 producción por capítulo
-$V scripts/60_paneles.py 205 240         # fichas de datos, si las hay
-$V scripts/71_arte.py 17 57 73           # F5 arte y mapas
-$V scripts/50_assemble.py --todas        # F6 ensamble (re-corrible)
+traduce-pdf run catalog --project "<proyecto>"             # F0
+traduce-pdf run ocr --project "<proyecto>"                 # F1
+traduce-pdf run reclassify --project "<proyecto>"
+traduce-pdf run blocks --project "<proyecto>"
+traduce-pdf run entities --project "<proyecto>"            # F2
+traduce-pdf run pilot --project "<proyecto>" -- 6 15       # F3 GO/NO-GO
+traduce-pdf run translate --project "<proyecto>" -- 18 37  # F4
+traduce-pdf run panels --project "<proyecto>" -- 205 240
+traduce-pdf run art --project "<proyecto>" -- 17 57 73     # F5
+traduce-pdf run build --project "<proyecto>"               # F6
 ```
 
 ## Antes de empezar (ambos caminos)
 
-Escribe `proyecto.json` en la raíz y comprueba el modelo: `ollama list` → una llamada de
-prueba antes de empezar nada.
+Revisa el `proyecto.json` generado y comprueba el modelo: `ollama list` → una llamada de
+prueba antes de empezar nada. No crees `scripts/` ni `venv/` para proyectos nuevos.
 
 ## progress.csv (rutas B/C)
 

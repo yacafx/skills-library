@@ -114,8 +114,8 @@ RUTAS = {
   cero inpainting. Camino: extraer spans con posición y estilo (PyMuPDF), traducir con
   el modelo local, borrar el span original y reinsertar el traducido en la misma caja
   con la fuente embebida (o una sustituta métricamente compatible).
-  AVISO: esta ruta está diseñada pero NO ejercitada de punta a punta en un libro
-  completo. Valida con 2 páginas y enséñaselas al usuario antes de seguir.
+  Esta ruta está validada de punta a punta, pero cada PDF presenta fuentes y estructuras
+  distintas. Valida siempre un piloto representativo y enséñaselo al usuario antes de seguir.
   Cuidado: fuentes con subconjunto de glifos pueden no tener acentos → comprobar
   antes de reinsertar, y sustituir la fuente si falta algún glifo del idioma destino.""",
     "HIBRIDO": """RUTA B — capa de texto como insumo, composición raster

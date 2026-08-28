@@ -39,10 +39,12 @@ vive SOLO en su página de gbrain.
 
 ## Quick start
 
-1) **TRIAJE PRIMERO** — `python3 scripts/00_triaje.py <archivo.pdf>`. Nunca arranques el
-   pipeline de parcheo sin esto: si el PDF es digital, ese camino desperdicia calidad.
-2) Pregunta lo mínimo (§Decisiones) y crea la carpeta del proyecto con `proyecto.json`.
-3) Copia `scripts/` del skill a `<proyecto>/scripts/` y crea el venv (§Instalación).
+1) **TRIAJE PRIMERO** — crea el proyecto con `traduce-pdf init` y ejecuta
+   `traduce-pdf run triage --project <proyecto>`. Nunca arranques el pipeline de parcheo
+   sin esto: si el PDF es digital, ese camino desperdicia calidad.
+2) Pregunta lo mínimo (§Decisiones) y completa el `proyecto.json` generado.
+3) Ejecuta `traduce-pdf doctor --project <proyecto>`. El motor y el entorno son centrales:
+   no copies `scripts/` ni crees un venv dentro del proyecto.
 4) F0–F2: catálogo, OCR, glosario. F3: **piloto de 10 páginas** — no sigas sin piloto limpio.
 5) F4: producción por tandas de capítulo en segundo plano; repara lo que marque el QA.
 6) F5 arte/mapas, F6 ensamble, F7 QA final, **F7.5 validación total EN↔ES (obligatoria,
@@ -93,6 +95,8 @@ Todo lo demás se decide con datos: el catálogo dice qué páginas son texto, a
   "slug": "nombre-libro", "pdf_origen": "../Nombre original.pdf",
   "idioma_destino": "español de México", "dominio": "manual de rol d20",
   "modelo": "qwen3.5:35b-a3b-coding-nvfp4",
+  "engine": {"package": "traduce-pdf", "version": "0.1.0",
+             "profile": "digital", "mode": "packaged"},
   "nombres_propios": ["Karvek", "Puertobruma"],
   "reglas_extra": ["Hit: = Impacto:", "undead = muertos vivientes"],
   "secciones": [[6, "Introducción"], [18, "Capítulo 1"]]
@@ -105,10 +109,13 @@ ver §Ruta A. Para montar la carpeta del proyecto y el orden de ejecución compl
 
 ## Instalación
 
-```bash
-python3.13 -m venv scripts/venv && scripts/venv/bin/pip install \
-  pyobjc-framework-Vision pyobjc-framework-Quartz weasyprint pikepdf pillow numpy torch
-```
+El repositorio canónico es `yacafx/traduce-pdf` (privado). Instala la CLI una vez con
+`uv tool install --editable '.[digital]'` desde el clon local. Para escaneos usa el extra
+`scan`; es independiente porque Torch y OCR tienen un impacto de instalación mucho mayor.
+
+Los proyectos nuevos usan `engine.mode: packaged`. Un proyecto antiguo con modificaciones
+locales puede usar temporalmente `mode: legacy` y `legacy_script_root: scripts`; conserva
+su snapshot como extensión, pero utiliza el entorno y la orquestación centrales.
 - OCR = **Apple Vision** (macOS, 1.2 s/pág, excelente con cabeceras y cifras).
 - Inpainting = **LaMa TorchScript** directo (`70_lama.py`). **No uses iopaint**: fija un
   Pillow viejo que no compila en Python moderno. Descarga `big-lama.pt` (196 MB) a
