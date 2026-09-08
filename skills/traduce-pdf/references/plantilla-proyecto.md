@@ -1,13 +1,17 @@
 # Plantilla de arranque de un proyecto nuevo
 
 Elige el camino según el veredicto del triaje (`00_triaje.py`): **A** para PDF digital,
-**B/C** para escaneo. Ambos comparten `proyecto.json` (esquema en SKILL.md §proyecto.json).
+**B/C** para escaneo. Ambos usan `project.json` (contrato en `docs/project-schema.md`
+del motor central); `proyecto.json` es un contrato legacy aceptado por el adaptador.
 
 ## Camino A — PDF digital (ligero: solo PyMuPDF)
 
 ```bash
 traduce-pdf init "/ruta/al/original.pdf" --project "<proyecto>" \
   --title "Nombre del libro" --profile digital
+traduce-pdf run triage --project "<proyecto>"
+traduce-pdf preflight --project "<proyecto>"
+# Resuelve templates/fonts/font-policy.json y vuelve a ejecutar preflight.
 traduce-pdf doctor --project "<proyecto>"
 ```
 
@@ -50,8 +54,13 @@ traduce-pdf run build --project "<proyecto>"               # F6
 
 ## Antes de empezar (ambos caminos)
 
-Revisa el `proyecto.json` generado y comprueba el modelo: `ollama list` → una llamada de
+Revisa el `project.json` generado y comprueba el modelo: `ollama list` → una llamada de
 prueba antes de empezar nada. No crees `scripts/` ni `venv/` para proyectos nuevos.
+
+Antes de traducir, completa la auditoría tipográfica y conecta las decisiones con el
+compositor. La disponibilidad de archivos no certifica que se usen al renderizar. Los
+escaneos sin fuentes vectoriales necesitan inventario visual manual; el preflight
+automático no los certifica.
 
 ## progress.csv (rutas B/C)
 

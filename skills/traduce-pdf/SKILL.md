@@ -42,12 +42,20 @@ vive SOLO en su página de gbrain.
 1) **TRIAJE PRIMERO** — crea el proyecto con `traduce-pdf init` y ejecuta
    `traduce-pdf run triage --project <proyecto>`. Nunca arranques el pipeline de parcheo
    sin esto: si el PDF es digital, ese camino desperdicia calidad.
-2) Pregunta lo mínimo (§Decisiones) y completa el `proyecto.json` generado.
-3) Ejecuta `traduce-pdf doctor --project <proyecto>`. El motor y el entorno son centrales:
+2) Pregunta lo mínimo (§Decisiones) y completa el `project.json` generado.
+3) Ejecuta `traduce-pdf preflight --project <proyecto>`: inventaría las fuentes vectoriales
+   de todas las páginas y crea `templates/fonts/font-policy.json` y `qa/font-audit.json`.
+   Resuelve cada familia/estilo, verifica la cobertura del idioma destino, documenta el
+   origen/licencia y vuelve a ejecutar el preflight. Los proyectos nuevos bloquean
+   `run pilot` y `run translate` sin evidencia vigente. Una auditoría aprobada confirma
+   disponibilidad; no aplica todavía el mapa de fuentes a todos los compositores ni
+   certifica fidelidad visual. Conecta y comprueba las fuentes en el render antes de
+   traducir. Revisa manualmente texto en imágenes, contornos y PDFs sin fuentes vectoriales.
+4) Ejecuta `traduce-pdf doctor --project <proyecto>`. El motor y el entorno son centrales:
    no copies `scripts/` ni crees un venv dentro del proyecto.
-4) F0–F2: catálogo, OCR, glosario. F3: **piloto de 10 páginas** — no sigas sin piloto limpio.
-5) F4: producción por tandas de capítulo en segundo plano; repara lo que marque el QA.
-6) F5 arte/mapas, F6 ensamble, F7 QA final, **F7.5 validación total EN↔ES (obligatoria,
+5) F0–F2: catálogo, OCR, glosario. F3: **piloto de 10 páginas** — no sigas sin piloto limpio.
+6) F4: producción por tandas de capítulo en segundo plano; repara lo que marque el QA.
+7) F5 arte/mapas, F6 ensamble, F7 QA final, **F7.5 validación total EN↔ES (obligatoria,
    §Ruta A — aplica igual en rutas B/C antes de entregar)**. F8 Foundry solo si aplica.
 
 ## F-1 — Triaje: ¿qué clase de PDF es? (obligatorio)
@@ -87,7 +95,11 @@ confiar en ella.
 
 Todo lo demás se decide con datos: el catálogo dice qué páginas son texto, arte o mapa.
 
-## proyecto.json
+## project.json y compatibilidad legacy
+
+Los proyectos nuevos usan claves en inglés y esquema 3 en `project.json`; el contrato
+vigente está en `docs/project-schema.md` del repositorio central. El siguiente ejemplo
+es únicamente el contrato legacy que acepta el adaptador para proyectos anteriores:
 
 ```json
 {
@@ -120,8 +132,12 @@ su snapshot como extensión, pero utiliza el entorno y la orquestación centrale
 - Inpainting = **LaMa TorchScript** directo (`70_lama.py`). **No uses iopaint**: fija un
   Pillow viejo que no compila en Python moderno. Descarga `big-lama.pt` (196 MB) a
   `plantillas/modelos/`.
-- Fuentes: clona/parchea las que faltan glifos del idioma destino con FontForge
-  (acentos, ¿¡, Ñ). Guárdalas en `plantillas/fuentes/patched/`.
+- Fuentes: primero consigue la familia completa desde el proveedor oficial y verifica
+  glifos, estilo y licencia. Adobe Fonts se activa desde Creative Cloud y se referencia
+  en su ubicación administrada: no copies ni parches sus archivos. Solo considera
+  FontForge cuando la licencia de otra fuente permita modificarla; guarda los derivados
+  permitidos en `templates/fonts/patched/`. El `fsType` es evidencia técnica, no una
+  licencia completa. Consulta `docs/typography-preflight.md` en el motor central.
 
 ## Fases
 
